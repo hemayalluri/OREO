@@ -1,0 +1,44 @@
+# Oreo configuration. Secrets (API keys, email passwords) never go here: put them in .env.
+
+oreo:
+  name: Oreo
+  boss_name: Siddartha            # used in greetings until face verification (step 6) knows who's talking
+  rejection_style: playful        # playful | professional
+  session_timeout_seconds: 120    # conversation history resets after this much idle time
+  max_face_attempts: 3
+  lockout_seconds: 60
+
+routing:
+  router_model: claude-haiku-5-5          # classifies each question
+  company_model: claude-sonnet-5-5        # complex company questions, comparisons, mixed questions
+  company_simple_model: claude-haiku-5-5  # single-number company lookups
+  general_model: claude-haiku-5-5         # general questions; never sees company data
+  default_when_unsure: company            # uncertain questions take the secure path
+  share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
+  web_search_for_mixed: true              # mixed questions may use web search alongside company data
+  effort:
+    router: low
+    company: medium
+    company_simple: low
+    general: low
+  max_tool_rounds: 8                      # safety cap on tool calls per question
+
+mcp:
+  servers:
+    - name: mock-sales
+      transport: stdio
+      command: python                     # "python" means: the same Python that runs Oreo
+      args: [mcp_server/sales_server.py]  # relative paths are relative to this file
+      read_only: true                     # only tools that declare themselves read-only are allowed
+      allowed_tools: [data_freshness, list_dimensions, get_sales_summary, compare_periods, top_items, sales_trend]
+
+email:
+  allowed_domains: ["example-test-domain.com"]
+  require_confirmation: true
+
+logging:
+  dir: logs                               # audit.jsonl (every tool call) and conversations.jsonl
+
+users:
+  - name: Siddartha
+    role: boss

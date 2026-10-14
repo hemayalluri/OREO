@@ -1,4 +1,11 @@
-# Oreo — Step 1: mock sales database + read-only MCP server
+# Oreo
+
+Oreo is a desk robot that answers sales questions from company data, answers general questions, and (soon) makes and emails reports. This repo is built in steps; each one ends in something runnable.
+
+- **Step 1:** mock sales database + read-only MCP server (below)
+- **Step 2:** Oreo's brain, a text chat in the terminal ([jump to it](#step-2-oreos-brain-text-chat))
+
+# Step 1: mock sales database + read-only MCP server
 
 This is the data layer for Oreo. It creates a fake sales database for a fictional
 company, **Lumen Desk Co.** (a B2B seller of desks, chairs, lighting, tech and
@@ -144,9 +151,93 @@ Press Ctrl+C to stop it.
 correct, and look at the server log at `~/Library/Logs/Claude/mcp-server-oreo-sales.log`.
 "Database not found" means step 1 above hasn't been run (or `OREO_SALES_DB` is wrong).
 
+# Step 2: Oreo's brain (text chat)
+
+Ask Oreo questions in the terminal. Each question is routed, answered by the
+right model, and comes back with its source and "as of" date.
+
+```
+backend/
+├── config.py        # loads config.yaml + .env
+├── models.py        # model adapter: the only place that calls an LLM
+├── router.py        # company / general / mixed / action classification
+├── mcp_gateway.py   # MCP client, tool allowlist, read-only check, audit log
+├── prompts.py       # Oreo's personality and per-path rules
+├── orchestrator.py  # routing, tool loop, shared history, idle timeout
+└── chat.py          # terminal chat
+config.yaml          # models, routing, MCP servers, timeouts
+.env.example         # copy to .env and add your API key
+tests/               # runs without an API key (scripted fake model)
+```
+
+**How a question flows**
+
+1. The **router** (Claude Haiku 5.5) labels it `company`, `general`, `mixed` or `action`.
+   If it's unsure, or the router call fails, the question takes the company path,
+   because that's the secure one.
+2. **Company:** Claude gets the six sales tools through the **MCP gateway**. Simple
+   one-number lookups use Haiku 5.5; anything else uses Sonnet 5.5. The gateway only
+   exposes allowlisted tools that declare themselves read-only, and logs every call to
+   `logs/audit.jsonl`.
+3. **Mixed:** the company path plus web search, for questions that need outside context.
+4. **General:** Haiku 5.5 with no tools. It never sees company data: earlier company
+   answers in the history are replaced with `[withheld]`
+   (`share_company_answers_with_general` in `config.yaml`).
+5. **Action** (reports and email) replies that the skill is coming; step 3 builds it.
+
+History is shared across routes so follow-ups ("and last year?") work, and resets after
+2 minutes idle (`session_timeout_seconds`). Errors become short spoken-style messages,
+such as "I can't reach the sales system right now." Every exchange is logged to
+`logs/conversations.jsonl`.
+
+**Cost controls:** Haiku for routing, simple lookups and general chat; Sonnet only
+for harder company questions; prompt caching on the system prompt and tool
+definitions; a cap of 8 tool rounds per question (`max_tool_rounds`). Set a monthly
+spending limit in the Claude Console too.
+
+**Refusal fallback:** Sonnet 5.5 requests opt into the API's server-side fallback
+(`fallbacks: "default"`), so if a safety check declines a harmless request, another
+model answers instead of Oreo going silent. Haiku has no such fallback; Oreo says
+politely that it can't help.
+
+## Run it
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt          # adds the Anthropic SDK, PyYAML, python-dotenv, pytest
+cp .env.example .env                     # then paste your API key into .env
+python data/create_mock_data.py          # if you haven't yet
+python -m backend.chat                   # add --debug to see routing and tool calls
+```
+
+Get an API key at https://platform.claude.com (Settings → API keys) and set a
+monthly spending limit there before you start.
+
+Things to try:
+
+- "What were our top 3 products last quarter?" → company path, Haiku or Sonnet, `top_items`
+- "And how about in Europe?" → follow-up stays on the company path
+- "How is this year going compared with last year?" → `compare_periods` on Sonnet
+- "Tell me a fun fact about octopuses." → general path, no tools
+- "Are our lighting sales keeping up with the smart-lamp market?" → mixed, with web search
+- "Email me a sales report." → action (coming in step 3)
+- `/reset` clears the conversation, `/quit` exits
+
+Below each answer the chat shows the route, model, tools used and data date.
+
+## Tests
+
+```bash
+python -m pytest
+```
+
+The tests start the real MCP server on a small generated database and replace
+Claude with a scripted fake, so they need no API key and cost nothing. They cover
+routing (including the secure fallback), the tool allowlist and read-only checks,
+the audit log, withholding company answers from the general path, the idle
+timeout, the tool-round cap and friendly error messages.
+
 ## What's next
 
-Step 2 (Oreo's brain) builds the Python orchestrator that connects to this same
-server through its own MCP client, with the router and the Oreo personality.
-`config.yaml` and `.env.example` from the plan's layout are added in that step,
-when there's something to configure.
+Step 3: reports (Word, PDF, Excel) from MCP data, and email that's sent only after a
+clear "yes".

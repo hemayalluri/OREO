@@ -1,3 +1,10 @@
-# Step 1: mock sales database + read-only MCP server.
-# The database generator uses only the Python standard library.
-mcp>=2.2,<3        # official MCP Python SDK (2.x: MCPServer, Client)
+# Step 1: mock sales database + read-only MCP server
+mcp>=2.2,<3            # official MCP Python SDK (2.x: MCPServer, Client)
+
+# Step 2: Oreo's brain (text chat)
+anthropic>=1.14,<2     # Claude API SDK
+pyyaml>=6              # config.yaml
+python-dotenv>=1       # loads .env
+
+# Development
+pytest>=8
