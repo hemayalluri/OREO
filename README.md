@@ -6,6 +6,7 @@ Oreo is a desk robot that answers sales questions from company data, answers gen
 - **Step 2:** Oreo's brain, a text chat in the terminal ([jump to it](#step-2-oreos-brain-text-chat))
 - **Steps 4–5 (first part):** Oreo's face page and tap-to-talk voice ([jump to it](#steps-45-oreos-face-and-voice))
 - **Step 3:** sales reports (PDF, Word, Excel) and email after a clear "yes" ([jump to it](#step-3-reports-and-email))
+- **Step 8:** Oreo on the iPad, as a full-screen home-screen app ([jump to it](#step-8-oreo-on-the-ipad))
 
 # Step 1: mock sales database + read-only MCP server
 
@@ -289,8 +290,7 @@ python -m backend.main              # then open http://localhost:8000 in Chrome 
 - Each question costs the same as in the text chat: one Haiku routing call plus the
   answer. Speech costs nothing.
 
-**On the iPad (later, step 8):** browsers only allow the microphone on `localhost` or
-over HTTPS, so the iPad will need an HTTPS address for the Mac. Step 8 sets that up.
+**On the iPad:** see [Step 8](#step-8-oreo-on-the-ipad).
 
 **Still to come for voice:** the "Hey Oreo" wake word (openWakeWord, free and local) so
 you don't need to tap, and optionally a Piper voice for a custom Oreo sound.
@@ -330,6 +330,50 @@ Ask Oreo for a report by voice or text, and it builds one from the sales tools:
   so the whole flow can be tested with no mail account. To really send, set `email.mode: smtp` and put
   `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` (an app password) and `EMAIL_FROM` in `.env`.
 - Set `email.default_recipient` to your address for "email it to me".
+
+# Step 8: Oreo on the iPad
+
+The Mac does the thinking (Claude, the sales data, speech-to-text, Ava's voice); the iPad is
+Oreo's face, microphone and speaker, opened as a full-screen app from its Home Screen. Both
+must be on the same Wi-Fi.
+
+**On the Mac, every time:**
+
+```bash
+caffeinate -i python -m backend.main --ipad   # caffeinate keeps the Mac from sleeping while Oreo runs
+```
+
+It prints a pairing link like `https://Your-Mac.local:8443/?key=…`. Keep that link private: it's
+what lets a device use Oreo. Anyone without it gets "Oreo isn't paired with this device"
+(requests from the Mac itself don't need the key).
+
+**On the iPad, once:**
+
+1. **Trust Oreo's certificate.** iPad Safari only allows the microphone on HTTPS pages, so the
+   first run creates a private certificate authority just for this Mac (`certs/oreo-local-ca.pem`).
+   AirDrop that file to the iPad and tap **Allow**. Then open Settings → General →
+   VPN & Device Management → **Oreo Local CA** → **Install**. Last, go to Settings → General → About →
+   Certificate Trust Settings and switch on full trust for **Oreo Local CA**. (It only vouches for
+   Oreo's address on this Mac; delete it there any time to undo.)
+2. **Open the pairing link in Safari** (AirDrop or type it). Allow the microphone when asked.
+3. **Make it an app:** Share → **Add to Home Screen** → Add. From now on, open Oreo from its icon:
+   it runs full screen, with no browser bars, and pairs itself on launch.
+4. **Robot mode (optional):** Settings → Display & Brightness → Auto-Lock → **Never** (Oreo also
+   asks the screen to stay on), and Settings → Accessibility → **Guided Access**, so a
+   triple-click locks the iPad into Oreo.
+
+Tap the face once after opening (iPadOS needs one tap before a page may use the mic and speaker),
+then just say "Hey Oreo".
+
+**Notes**
+
+- The certificate covers the Mac's `.local` name and its current Wi-Fi address. If the address
+  changes, the next run makes a new server certificate from the same authority, so the iPad
+  doesn't need to trust anything again.
+- `certs/` holds the authority's private key and the pairing key. It's in `.gitignore`; never share it.
+  To revoke every paired device, delete `certs/pairing-key.txt` and restart.
+- Only requests from this Mac itself skip the key, so don't put another proxy or tunnel in front of
+  Oreo on the Mac without adding its own login.
 
 ## What's next
 

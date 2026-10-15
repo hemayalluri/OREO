@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import FILLERS, create_app
@@ -124,3 +125,42 @@ def test_report_downloads_only_serve_files_in_the_reports_folder(settings, tmp_p
         assert ok.status_code == 200 and ok.content == b"%PDF-1.4 fake"
         for bad in ("../secret.pdf", "..%2Fsecret.pdf", "missing.pdf", "config.yaml"):
             assert client.get(f"/reports/{bad}").status_code == 404
+
+
+def ipad_client(settings, key="s3cret-pairing-key", **kw):
+    app = create_app(settings, ModelAdapter(FakeClient(company_script)), FakeSTT(), FakeTTS(), pairing_key=key)
+    # https base URL: the pairing cookie is Secure, like on the real iPad connection.
+    return TestClient(app, base_url="https://oreo.local", client=("10.0.0.20", 50000), **kw)
+
+
+def test_ipad_mode_refuses_unpaired_devices_on_the_wifi(settings):
+    with ipad_client(settings) as client:
+        for path in ("/", "/static/app.js", "/api/health", "/reports/x.pdf"):
+            assert client.get(path).status_code == 401
+        assert client.get("/?key=wrong-key").status_code == 401
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws") as ws:
+                ws.receive_json()
+
+
+def test_ipad_pairing_link_sets_a_cookie_then_everything_works(settings):
+    with ipad_client(settings, follow_redirects=False) as client:
+        first = client.get("/?key=s3cret-pairing-key")
+        assert first.status_code == 303 and first.headers["location"] == "/"
+        cookie = first.headers["set-cookie"].lower()
+        assert "httponly" in cookie and "secure" in cookie and "samesite=strict" in cookie
+        assert client.get("/").status_code == 200 and client.get("/api/health").status_code == 200
+        # The home-screen app has its own cookies, so its start link carries the key.
+        assert client.get("/manifest.webmanifest").json()["start_url"] == "/?key=s3cret-pairing-key"
+        # The cookie is Secure, so (like Safari on the iPad) it only goes over wss://.
+        with client.websocket_connect("wss://oreo.local/ws") as ws:
+            ws.send_json({"type": "ask", "text": "What were our top products last quarter?"})
+            assert ws.receive_json()["type"] == "state"
+
+
+def test_this_mac_needs_no_key_and_the_app_manifest_is_served(settings):
+    app = create_app(settings, ModelAdapter(FakeClient(company_script)), FakeSTT(), FakeTTS(), pairing_key="k")
+    with TestClient(app) as client:   # requests from the Mac itself
+        assert client.get("/").status_code == 200
+        manifest = client.get("/manifest.webmanifest").json()
+        assert manifest["display"] == "fullscreen" and client.get("/static/icon-180.png").status_code == 200

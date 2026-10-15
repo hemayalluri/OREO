@@ -18,5 +18,8 @@ python-docx>=1.1         # Word reports
 reportlab>=4.2           # PDF reports
 matplotlib>=3.9          # charts inside the Word and PDF reports
 
+# Step 8: Oreo on the iPad
+cryptography>=42         # makes the private HTTPS certificate for the iPad
+
 # Development
 pytest>=8
