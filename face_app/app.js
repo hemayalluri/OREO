@@ -142,8 +142,22 @@ function stopSpeaking() {
 }
 
 // iOS only lets a page speak after a tap; speaking an empty line during the first tap unlocks it.
+// Keep the screen on while Oreo is running (iPad as a robot face). Released by the OS when the
+// page is hidden, so it's asked for again when the page comes back.
+let wakeLock = null;
+async function keepScreenOn() {
+  try {
+    if ("wakeLock" in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    }
+  } catch { /* not supported, or not allowed yet: Auto-Lock "Never" on the iPad does the same */ }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && unlocked) keepScreenOn(); });
+
 let unlocked = false;
 function unlockSpeech() {
+  keepScreenOn();
   // Safari only runs an AudioContext that was started during a tap; the level meter needs it.
   try {
     rec.ctx = rec.ctx || new (window.AudioContext || window.webkitAudioContext)();
