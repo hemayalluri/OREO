@@ -25,6 +25,7 @@ from typing import Any, Awaitable, Callable
 from .config import Settings
 from .mcp_gateway import McpGateway
 from .models import ModelAdapter, ModelError, text_of
+from .actions import Actions, ActionResult
 from .prompts import company_system, general_system, live_system
 from .router import RouteDecision, Router
 
@@ -46,6 +47,7 @@ class Answer:
     tools_used: list[str] = field(default_factory=list)
     error: bool = False
     route_reason: str = ""
+    files: list[str] = field(default_factory=list)   # report files made for this answer (names in reports/)
 
 
 SOURCE_NOTE = "\n\n[Internal note, not spoken: the figures above came from the sales database tools ({tools}), data as of {as_of}.]"
@@ -76,6 +78,7 @@ class Orchestrator:
         self.history: list[Turn] = []
         self.session_id = uuid.uuid4().hex[:12]
         self._last_activity = self.clock()
+        self.actions = Actions(settings, models, gateway)
 
     # ------------------------------------------------------------------ #
     # Session
@@ -84,6 +87,8 @@ class Orchestrator:
     def reset(self) -> None:
         self.history = []
         self.session_id = uuid.uuid4().hex[:12]
+        if hasattr(self, "actions"):
+            self.actions.reset()
 
     def _touch(self) -> None:
         now = self.clock()
@@ -118,14 +123,23 @@ class Orchestrator:
         uses it to show the Thinking face and say a filler line before the answer is ready)."""
         question = question.strip()
         self._touch()
+        # An email waiting for a yes: settled by code before anything else (no model call).
+        pending = await self.actions.resolve_pending(question)
+        if pending is not None:
+            answer = self._from_action(pending)
+            self._finish(question, answer)
+            return answer
         decision = await self.router.route(question, [t.question for t in self.history])
         log.info("Route: %s (%s)", decision.route, decision.reason)
         if on_route:
             await on_route(decision)
         try:
             if decision.route == "action":
-                answer = Answer("I can't create reports or send emails just yet. That skill is coming soon!",
-                                "action")
+                if not self.gateway.available:
+                    answer = Answer("I can't reach the sales system right now.", "action", error=True)
+                else:
+                    answer = self._from_action(await self.actions.handle(
+                        question, [t.question for t in self.history], self.session_id))
             elif decision.route in ("company", "mixed"):
                 answer = await self._company(question, decision)
             elif decision.route == "live":
@@ -136,11 +150,19 @@ class Orchestrator:
             log.error("Model error: %s", exc)
             answer = Answer(exc.spoken, decision.route, error=True)
         answer.route_reason = decision.reason
+        self._finish(question, answer)
+        return answer
+
+    def _finish(self, question: str, answer: Answer) -> None:
         if not answer.error:
             self.history.append(Turn(question, answer.text, answer.route, list(answer.tools_used),
                                      answer.as_of, list(answer.sources)))
         self._log(question, answer)
-        return answer
+
+    def _from_action(self, result: ActionResult) -> Answer:
+        model = self.settings.routing.get("action_model", self.settings.routing["general_model"])
+        return Answer(result.text, "action", model, result.sources, result.as_of, result.tools_used,
+                      result.error, files=[f.name for f in result.files])
 
     # ------------------------------------------------------------------ #
     # Paths

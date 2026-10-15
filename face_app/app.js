@@ -364,6 +364,21 @@ async function onServerMessage(msg) {
   }
 }
 
+// Report files Oreo just made, as download links under the answer.
+function showFiles(files) {
+  if (!files?.length) return;
+  const labels = { pdf: "PDF", docx: "Word", xlsx: "Excel" };
+  ui.meta.append(" ");
+  for (const name of files) {
+    const a = document.createElement("a");
+    a.href = `/reports/${encodeURIComponent(name)}`;
+    a.target = "_blank";
+    a.className = "file";
+    a.textContent = `⬇ ${labels[name.split(".").pop()] || name}`;
+    ui.meta.append(a, " ");
+  }
+}
+
 async function ask(text) {
   state.busy = true;
   state.lastHeard = performance.now();
@@ -381,6 +396,7 @@ async function ask(text) {
   if (answer.sources?.length) meta.push(answer.sources.join(", "));
   if (answer.as_of) meta.push(`as of ${answer.as_of}`);
   caption(undefined, answer.text, meta.join(" · "));
+  showFiles(answer.files);
   await speak(answer.text);
   state.busy = false;
   touch();

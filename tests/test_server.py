@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -111,3 +112,15 @@ def test_speak_returns_wav_in_the_mac_voice(settings):
         assert client.post("/api/speak", json={"text": "  "}).status_code == 404
     assert res.status_code == 200 and res.headers["content-type"] == "audio/wav"
     assert res.content == b"RIFF-fake-wav" and tts.calls == ["Hi Siddartha!"]
+
+
+def test_report_downloads_only_serve_files_in_the_reports_folder(settings, tmp_path):
+    folder = Path(settings.raw["reports"]["dir"])
+    folder.mkdir(parents=True)
+    (folder / "last-month.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "secret.pdf").write_bytes(b"secret")
+    with make_client(settings) as client:
+        ok = client.get("/reports/last-month.pdf")
+        assert ok.status_code == 200 and ok.content == b"%PDF-1.4 fake"
+        for bad in ("../secret.pdf", "..%2Fsecret.pdf", "missing.pdf", "config.yaml"):
+            assert client.get(f"/reports/{bad}").status_code == 404

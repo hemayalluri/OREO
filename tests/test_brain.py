@@ -216,11 +216,6 @@ def test_model_outage_gives_a_spoken_message(settings):
     assert answer.error and answer.text == "I can't reach the internet right now."
 
 
-def test_action_requests_are_deferred(settings):
-    (answer,), client = run(ask_all(settings, lambda kw: route_json("action"), ["Email me a report"]))
-    assert answer.route == "action" and len(client.calls) == 1
-
-
 def test_session_resets_after_idle_timeout(settings):
     now = [0.0]
 

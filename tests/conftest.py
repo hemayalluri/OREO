@@ -31,6 +31,9 @@ def settings(sales_db, tmp_path):
     for server in s.raw["mcp"]["servers"]:
         server["env"] = {"OREO_SALES_DB": str(sales_db)}
     s.raw["logging"] = {"dir": str(tmp_path / "logs")}
+    s.raw["reports"] = {"dir": str(tmp_path / "reports"), "default_formats": ["pdf"]}
+    s.raw["email"] = {**s.raw["email"], "mode": "outbox", "outbox_dir": str(tmp_path / "outbox"),
+                      "default_recipient": "boss@example-test-domain.com"}
     return s
 
 
@@ -69,7 +72,8 @@ class FakeClient:
 
 
 def is_router(kwargs: dict) -> bool:
-    return "format" in kwargs.get("output_config", {})
+    fmt = kwargs.get("output_config", {}).get("format")
+    return bool(fmt) and "route" in fmt.get("schema", {}).get("properties", {})
 
 
 def route_json(route: str, complexity: str = "complex", confident: bool = True) -> Any:

@@ -106,6 +106,16 @@ def create_app(settings: Settings | None = None, models: ModelAdapter | None = N
                       "server_voice": server_voice},
         }
 
+    reports_dir = (settings.root / settings.raw.get("reports", {}).get("dir", "reports")).resolve()
+
+    @app.get("/reports/{name}")
+    async def report_file(name: str) -> FileResponse:
+        """Download a report Oreo made (only files directly inside the reports folder)."""
+        path = (reports_dir / name).resolve()
+        if path.parent != reports_dir or path.suffix not in (".pdf", ".docx", ".xlsx") or not path.is_file():
+            raise HTTPException(404, "No such report.")
+        return FileResponse(path, filename=name)
+
     @app.post("/api/speak")
     async def speak(body: dict[str, Any]) -> Response:
         """Text in, WAV out, spoken with the Mac's voice (used when the browser lacks it)."""

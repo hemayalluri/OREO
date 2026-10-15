@@ -66,3 +66,23 @@ def classify(text: str, mode: str = "question") -> Heard:
     if is_goodbye(text):
         return Heard("sleep", text)
     return Heard("question", text, text)
+
+
+# Confirming or cancelling a pending action (sending an email). Matched by code, so only a
+# clear yes sends anything; a "yes, but..." or any other reply does not.
+_CONFIRM = re.compile(
+    r"^(?:(?:yes|yeah|yep|yup|sure|ok|okay|alright|all right|please|correct|absolutely|definitely)\s*)+"
+    r"(?:(?:please\s+)?(?:send it|send|go ahead|do it|send that|send the email|please do|thanks|thank you)\s*)*$"
+    r"|^(?:please\s+)?(?:send it|send that|go ahead|go ahead and send it|do it|confirm|confirmed)(?:\s+please)?$")
+_CANCEL = re.compile(
+    r"^(?:no|nope|nah|don'?t|do not|cancel|stop|wait|hold on|never ?mind|not now|don'?t send it|"
+    r"no thanks|no thank you|cancel that|cancel it)\b")
+
+
+def is_confirmation(text: str) -> bool:
+    norm = _normalize(text)
+    return bool(norm) and bool(_CONFIRM.match(norm)) and norm not in ("ok", "okay", "please")
+
+
+def is_cancel(text: str) -> bool:
+    return bool(_CANCEL.match(_normalize(text)))

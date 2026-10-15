@@ -6,3 +6,5 @@ data/*.db
 logs/
 .DS_Store
 .pytest_cache/
+reports/
+outbox/

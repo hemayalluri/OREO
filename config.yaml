@@ -56,9 +56,16 @@ voice:
   hands_free: true            # after waking, keep listening for the next question (no tap needed)
   listen_timeout_seconds: 30  # in hands-free mode, go back to sleep after this long with nobody speaking
 
+reports:
+  dir: reports                  # where Excel / Word / PDF reports are saved (relative to this file)
+  default_formats: [pdf]        # used when you don't say which format you want
+
 email:
-  allowed_domains: ["example-test-domain.com"]
-  require_confirmation: true
+  allowed_domains: ["example-test-domain.com"]   # Oreo refuses to email any other domain
+  require_confirmation: true    # always on: an email is only sent after a clear "yes"
+  mode: outbox                  # outbox = save emails to outbox/ instead of sending (safe for testing); smtp = really send
+  outbox_dir: outbox
+  default_recipient: "siddartha@example-test-domain.com"  # your address, used for "email it to me" (must be in allowed_domains)
 
 logging:
   dir: logs                               # audit.jsonl (every tool call) and conversations.jsonl
