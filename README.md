@@ -175,11 +175,12 @@ tests/               # runs without an API key (scripted fake model)
 1. The **router** (Claude Haiku 5.5) labels it `company`, `general`, `mixed` or `action`.
    If it's unsure, or the router call fails, the question takes the company path,
    because that's the secure one.
-2. **Company:** Claude gets the six sales tools through the **MCP gateway**. Simple
-   one-number lookups use Haiku 5.5; anything else uses Sonnet 5.5. The gateway only
+2. **Company:** Claude gets the six sales tools through the **MCP gateway**. Budget
+   mode uses Haiku 5.5 for everything; with `company_model` set to Sonnet 5.5, only
+   simple one-number lookups stay on Haiku. The gateway only
    exposes allowlisted tools that declare themselves read-only, and logs every call to
    `logs/audit.jsonl`.
-3. **Mixed:** the company path plus web search, for questions that need outside context.
+3. **Mixed:** the company path, plus web search when `web_search_for_mixed` is on.
 4. **General:** Haiku 5.5 with no tools. It never sees company data: earlier company
    answers in the history are replaced with `[withheld]`
    (`share_company_answers_with_general` in `config.yaml`).
@@ -190,12 +191,14 @@ History is shared across routes so follow-ups ("and last year?") work, and reset
 such as "I can't reach the sales system right now." Every exchange is logged to
 `logs/conversations.jsonl`.
 
-**Cost controls:** Haiku for routing, simple lookups and general chat; Sonnet only
-for harder company questions; prompt caching on the system prompt and tool
-definitions; a cap of 8 tool rounds per question (`max_tool_rounds`). Set a monthly
-spending limit in the Claude Console too.
+**Cost controls (budget mode is the default):** every route uses Claude Haiku 5.5
+($0.10 / $0.50 per million input/output tokens) at low effort; web search is off;
+each answer is capped at 4,000 tokens and 5 tool rounds per question; the system
+prompt and tool definitions are cached. A typical question costs well under a cent.
+For harder analysis, set `company_model: claude-sonnet-5-5` in `config.yaml`
+(about 20x the price per token). Always set a monthly spend limit in the Claude Console.
 
-**Refusal fallback:** Sonnet 5.5 requests opt into the API's server-side fallback
+**Refusal fallback:** if you switch to Sonnet 5.5, its requests opt into the API's server-side fallback
 (`fallbacks: "default"`), so if a safety check declines a harmless request, another
 model answers instead of Oreo going silent. Haiku has no such fallback; Oreo says
 politely that it can't help.
@@ -215,11 +218,11 @@ monthly spending limit there before you start.
 
 Things to try:
 
-- "What were our top 3 products last quarter?" → company path, Haiku or Sonnet, `top_items`
+- "What were our top 3 products last quarter?" → company path, `top_items`
 - "And how about in Europe?" → follow-up stays on the company path
-- "How is this year going compared with last year?" → `compare_periods` on Sonnet
+- "How is this year going compared with last year?" → `compare_periods`
 - "Tell me a fun fact about octopuses." → general path, no tools
-- "Are our lighting sales keeping up with the smart-lamp market?" → mixed, with web search
+- "Are our lighting sales keeping up with the smart-lamp market?" → mixed (web search only if enabled)
 - "Email me a sales report." → action (coming in step 3)
 - `/reset` clears the conversation, `/quit` exits
 

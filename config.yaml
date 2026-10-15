@@ -10,18 +10,21 @@ oreo:
 
 routing:
   router_model: claude-haiku-5-5          # classifies each question
-  company_model: claude-sonnet-5-5        # complex company questions, comparisons, mixed questions
+  # Budget mode: every route uses Haiku 5.5 ($0.10 / $0.50 per million tokens).
+  # For harder company questions, switch company_model to claude-sonnet-5-5 (about 20x the price).
+  company_model: claude-haiku-5-5         # complex company questions, comparisons, mixed questions
   company_simple_model: claude-haiku-5-5  # single-number company lookups
   general_model: claude-haiku-5-5         # general questions; never sees company data
   default_when_unsure: company            # uncertain questions take the secure path
   share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
-  web_search_for_mixed: true              # mixed questions may use web search alongside company data
+  web_search_for_mixed: false             # web search costs extra per search; turn on if needed (needs Sonnet)
   effort:
     router: low
-    company: medium
+    company: low
     company_simple: low
     general: low
-  max_tool_rounds: 8                      # safety cap on tool calls per question
+  max_tool_rounds: 5                      # safety cap on tool calls per question
+  max_answer_tokens: 4000                 # cap on each model response (spoken answers are short)
 
 mcp:
   servers:

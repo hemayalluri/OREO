@@ -132,7 +132,7 @@ class Orchestrator:
             system=general_system(self.name, self.boss),
             messages=self._history_messages("general") + [{"role": "user", "content": question}],
             effort=r.get("effort", {}).get("general"),
-            max_tokens=4000,
+            max_tokens=r.get("max_answer_tokens", 4000),
         )
         if msg.stop_reason == "refusal":
             return Answer("Sorry, that's not something I can help with.", "general", model)
@@ -156,7 +156,7 @@ class Orchestrator:
         used: list[str] = []
         for _ in range(r.get("max_tool_rounds", 8)):
             msg = await self.models.create(model=model, system=system, tools=tools, messages=messages,
-                                           effort=effort, max_tokens=16000)
+                                           effort=effort, max_tokens=r.get("max_answer_tokens", 4000))
             if msg.stop_reason == "refusal":
                 return Answer("Sorry, I can't help with that one.", decision.route, model)
             # Append the full response (thinking, tool calls, server-tool results) unchanged.

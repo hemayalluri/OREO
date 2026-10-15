@@ -70,6 +70,7 @@ def test_gateway_refuses_tools_without_read_only_hint(settings, monkeypatch):
 # --------------------------------------------------------------------------- #
 
 def test_company_question_uses_tools_and_reports_as_of(settings):
+    settings.raw["routing"]["company_model"] = "claude-sonnet-5-5"
     def script(kw):
         if is_router(kw):
             return route_json("company")
@@ -99,6 +100,7 @@ def test_simple_company_question_uses_cheaper_model(settings):
             return route_json("company", complexity="simple")
         return response(text_block("About 19 million dollars."))
 
+    settings.raw["routing"]["company_model"] = "claude-sonnet-5-5"
     (answer,), client = run(ask_all(settings, script, ["Revenue last quarter?"]))
     assert answer.model == "claude-haiku-5-5"
     assert "fallbacks" not in client.calls[1]  # Haiku has no server-side fallback
@@ -122,6 +124,7 @@ def test_tool_errors_are_returned_to_the_model(settings):
 
 
 def test_mixed_question_adds_web_search(settings):
+    settings.raw["routing"]["web_search_for_mixed"] = True
     def script(kw):
         if is_router(kw):
             return route_json("mixed")
