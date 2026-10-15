@@ -19,7 +19,7 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from .config import Settings
 from .mcp_gateway import McpGateway
@@ -98,11 +98,15 @@ class Orchestrator:
     # Main entry point
     # ------------------------------------------------------------------ #
 
-    async def ask(self, question: str) -> Answer:
+    async def ask(self, question: str, on_route: Callable[[RouteDecision], Awaitable[None]] | None = None) -> Answer:
+        """Answer one question. `on_route` is called once the route is known (the face page
+        uses it to show the Thinking face and say a filler line before the answer is ready)."""
         question = question.strip()
         self._touch()
         decision = await self.router.route(question, [t.question for t in self.history])
         log.info("Route: %s (%s)", decision.route, decision.reason)
+        if on_route:
+            await on_route(decision)
         try:
             if decision.route == "action":
                 answer = Answer("I can't create reports or send emails just yet. That skill is coming soon!",

@@ -4,6 +4,7 @@ Oreo is a desk robot that answers sales questions from company data, answers gen
 
 - **Step 1:** mock sales database + read-only MCP server (below)
 - **Step 2:** Oreo's brain, a text chat in the terminal ([jump to it](#step-2-oreos-brain-text-chat))
+- **Steps 4–5 (first part):** Oreo's face page and tap-to-talk voice ([jump to it](#steps-45-oreos-face-and-voice))
 
 # Step 1: mock sales database + read-only MCP server
 
@@ -240,7 +241,66 @@ routing (including the secure fallback), the tool allowlist and read-only checks
 the audit log, withholding company answers from the general path, the idle
 timeout, the tool-round cap and friendly error messages.
 
+# Steps 4–5: Oreo's face and voice
+
+Talk to Oreo in a browser: tap its face, ask out loud, and it answers out loud
+while the face changes expression.
+
+```
+backend/main.py     # web server: face page, /api/transcribe, /ws (live state + answers)
+backend/speech.py   # local speech-to-text with faster-whisper
+face_app/           # the face page: index.html, face.css, app.js
+```
+
+**How it works**
+
+1. **Tap the face.** Oreo wakes up, says hi, and starts listening. The eyes pulse while it records.
+2. **Ask your question.** Recording stops by itself after a short pause, or when you tap again.
+3. **Speech to text, on your Mac.** The audio goes to `/api/transcribe`, where
+   **faster-whisper** turns it into text locally. It's free, works offline, and the
+   audio never leaves the Mac.
+4. **Thinking.** The question goes to the brain over a WebSocket. As soon as it's
+   routed, the face shows *Thinking* and, for sales questions, says
+   "Let me check the sales data."
+5. **Answering.** The answer is spoken with the device's built-in voice (free,
+   offline on macOS and iPadOS) and shown as a caption with its source and date.
+6. **Follow-ups.** Tap again to ask a follow-up. After 2 minutes idle, Oreo goes back to sleep.
+
+You can also type questions in the box at the bottom, which is handy when you're in a quiet office.
+
+**Faces:** Sleeping, Listening, Thinking and Speaking (the Authorized face with a moving
+mouth) are in use now. Scanning and Rejected are drawn and wait for face verification (step 6).
+
+## Run it
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt     # adds FastAPI, Uvicorn and faster-whisper
+python -m backend.main              # then open http://localhost:8000 in Chrome or Safari
+```
+
+- The first spoken question downloads the Whisper model (about 150 MB for `base.en`)
+  and then it's cached. Change `voice.stt_model` in `config.yaml` to `tiny.en` for
+  speed or `small.en` for accuracy.
+- Allow microphone access when the browser asks.
+- Pick a voice with `voice.tts_voice` (for example `"Samantha"`). Better voices can be
+  downloaded for free in macOS System Settings → Accessibility → Spoken Content.
+- Each question costs the same as in the text chat: one Haiku routing call plus the
+  answer. Speech costs nothing.
+
+**On the iPad (later, step 8):** browsers only allow the microphone on `localhost` or
+over HTTPS, so the iPad will need an HTTPS address for the Mac. Step 8 sets that up.
+
+**Still to come for voice:** the "Hey Oreo" wake word (openWakeWord, free and local) so
+you don't need to tap, and optionally a Piper voice for a custom Oreo sound.
+
+## Tests
+
+`tests/test_server.py` covers the face page, the transcription endpoint (with a
+stand-in for Whisper) and the WebSocket flow (thinking state, filler line, answer,
+reset). Like the other tests, it needs no API key and no microphone.
+
 ## What's next
 
-Step 3: reports (Word, PDF, Excel) from MCP data, and email that's sent only after a
-clear "yes".
+The "Hey Oreo" wake word, then step 3: reports (Word, PDF, Excel) from MCP data, and
+email that's sent only after a clear "yes".
