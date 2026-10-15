@@ -6,5 +6,10 @@ anthropic>=1.14,<2     # Claude API SDK
 pyyaml>=6              # config.yaml
 python-dotenv>=1       # loads .env
 
+# Steps 4-5: face page and voice
+fastapi>=0.115           # web server for the face page
+uvicorn[standard]>=0.30  # runs it (WebSocket support included)
+faster-whisper>=1.1      # local speech-to-text; downloads the Whisper model on first use
+
 # Development
 pytest>=8

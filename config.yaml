@@ -35,6 +35,13 @@ mcp:
       read_only: true                     # only tools that declare themselves read-only are allowed
       allowed_tools: [data_freshness, list_dimensions, get_sales_summary, compare_periods, top_items, sales_trend]
 
+voice:
+  stt_model: base.en          # local Whisper model: tiny.en (fastest), base.en (good default), small.en (most accurate, slower)
+  language: en
+  tts_voice: ""               # a macOS/iPadOS voice name such as "Samantha"; empty = the device's default English voice
+  tts_rate: 1.0
+  tts_pitch: 1.15             # a little higher sounds friendlier
+
 email:
   allowed_domains: ["example-test-domain.com"]
   require_confirmation: true

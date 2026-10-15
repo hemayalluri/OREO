@@ -1,0 +1,135 @@
+:root {
+  --face: #1B2333;
+  --mint: #5EE6D0;
+  --orange: #F28C38;
+  --red: #F2603A;
+  --grey: #6B7689;
+  --text: #E8EEF6;
+  --muted: #8C98AB;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--face);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+#screen {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+
+#face {
+  all: unset;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  min-height: 0;
+}
+
+#face svg { width: min(92vw, 120vh); max-height: 62vh; }
+
+/* Only the current expression is visible. */
+.expr { display: none; }
+[data-face="sleeping"] .sleeping,
+[data-face="listening"] .listening,
+[data-face="recording"] .listening,
+[data-face="scanning"] .scanning,
+[data-face="authorized"] .authorized,
+[data-face="speaking"] .authorized,
+[data-face="rejected"] .rejected,
+[data-face="thinking"] .thinking { display: inline; }
+
+.line { fill: none; stroke-width: 12; stroke-linecap: round; }
+.mint { stroke: var(--mint); filter: drop-shadow(0 0 10px rgba(94, 230, 208, .55)); }
+.grey { stroke: var(--grey); }
+.orange { stroke: var(--orange); }
+.red { stroke: var(--red); filter: drop-shadow(0 0 8px rgba(242, 96, 58, .5)); }
+.eye { fill: var(--mint); filter: drop-shadow(0 0 14px rgba(94, 230, 208, .6)); }
+.shine { fill: #fff; opacity: .85; }
+.pupil { fill: var(--face); }
+.mouth-o { fill: none; stroke: var(--mint); stroke-width: 8; }
+.blush { fill: var(--orange); opacity: .55; }
+.zzz { fill: var(--grey); font-size: 30px; font-weight: 700; animation: drift 3s ease-in-out infinite; }
+.zzz.small { font-size: 20px; animation-delay: 1s; }
+.scanline { stroke: var(--orange); stroke-width: 4; animation: scan 1.6s ease-in-out infinite alternate; }
+.dot { fill: var(--mint); animation: bounce 1.2s ease-in-out infinite; }
+.d2 { animation-delay: .15s; }
+.d3 { animation-delay: .3s; }
+
+/* The open mouth only shows while Oreo is speaking. */
+.talk { fill: var(--mint); opacity: 0; transform-origin: 200px 195px; }
+[data-face="speaking"] .smile { opacity: 0; }
+[data-face="speaking"] .talk { opacity: 1; animation: talk .28s ease-in-out infinite alternate; }
+
+/* Sleeping breathes; recording pulses. */
+[data-face="sleeping"] svg { animation: breathe 4s ease-in-out infinite; opacity: .75; }
+[data-face="recording"] .eye { animation: pulse 1s ease-in-out infinite; }
+
+@keyframes drift { 50% { transform: translateY(-6px); opacity: .5; } }
+@keyframes scan { to { transform: translateY(150px); } }
+@keyframes bounce { 50% { transform: translateY(-10px); } }
+@keyframes talk { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
+@keyframes breathe { 50% { transform: scale(.98); } }
+@keyframes pulse { 50% { filter: drop-shadow(0 0 26px rgba(94, 230, 208, .95)); } }
+
+#caption {
+  text-align: center;
+  min-height: 7.5em;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+#caption p { margin: .3em 0; }
+#heard { color: var(--muted); font-size: clamp(15px, 2.2vw, 20px); }
+#said { font-size: clamp(18px, 3vw, 28px); line-height: 1.35; }
+#meta { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); }
+
+footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 14px;
+}
+#status::before {
+  content: "";
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: var(--grey);
+  vertical-align: middle;
+}
+[data-face="recording"] #status::before { background: var(--red); animation: pulse 1s infinite; }
+[data-face="thinking"] #status::before,
+[data-face="speaking"] #status::before { background: var(--mint); }
+
+#typed { flex: 1 1 260px; max-width: 420px; }
+#typed input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #2E3A50;
+  background: #222C3F;
+  color: var(--text);
+  font: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#typed input:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}
