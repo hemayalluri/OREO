@@ -128,11 +128,12 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO if args.debug else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
+    settings = load_settings()  # loads .env, so check the key after this
     if not has_anthropic_credentials():
         raise SystemExit("No ANTHROPIC_API_KEY found. Copy .env.example to .env and add your key.")
     import uvicorn
     print(f"Oreo is awake at http://{'localhost' if args.host == '127.0.0.1' else args.host}:{args.port}")
-    uvicorn.run(create_app(), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(create_app(settings), host=args.host, port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":

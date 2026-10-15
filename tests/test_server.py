@@ -90,3 +90,23 @@ def test_websocket_general_question_has_no_filler_and_reset_works(settings):
     assert routed["route"] == "general" and routed["filler"] is None
     assert "recharge" in answer["text"]
     assert reset == {"type": "state", "state": "sleeping"}
+
+
+def test_main_reads_key_from_dotenv(tmp_path, monkeypatch):
+    """The key check must run after .env is loaded (it used to run before and always failed)."""
+    import backend.main as main_mod
+    from backend.config import load_settings as real_load
+
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("oreo: {name: Oreo}\nrouting: {}\n")
+    (tmp_path / ".env").write_text("ANTHROPIC_API_KEY=test-key-from-dotenv\n")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    monkeypatch.setattr(main_mod, "load_settings", lambda: real_load(cfg))
+    monkeypatch.setattr(main_mod, "create_app", lambda settings: settings)
+    started = []
+    import uvicorn
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: started.append(app))
+    monkeypatch.setattr("sys.argv", ["oreo"])
+    main_mod.main()
+    assert started and started[0].root == tmp_path.resolve()
