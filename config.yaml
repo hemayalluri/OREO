@@ -36,7 +36,9 @@ mcp:
       allowed_tools: [data_freshness, list_dimensions, get_sales_summary, compare_periods, top_items, sales_trend]
 
 voice:
-  stt_model: base.en          # local Whisper model: tiny.en (fastest), base.en (good default), small.en (most accurate, slower)
+  stt_model: base.en          # local Whisper model: base.en (fast, ~150 MB), small.en (more accurate, slower, ~460 MB)
+  # Words Whisper should expect. Add your own name and product names here for better accuracy.
+  stt_prompt: "Oreo, sales, revenue, orders, profit, margin, last quarter, this year, region, channel, product, category, Enterprise, Mid-Market, Small Business, Lumen Desk."
   language: en
   tts_voice: ""               # a macOS/iPadOS voice name such as "Samantha"; empty = the device's default English voice
   tts_rate: 1.0

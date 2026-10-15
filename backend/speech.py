@@ -23,8 +23,10 @@ class SpeechUnavailable(Exception):
 class WhisperSTT:
     """Lazy-loads the Whisper model on first use (the first load downloads it, ~150 MB for base.en)."""
 
-    def __init__(self, model: str = "base.en", language: str = "en", compute_type: str = "int8"):
+    def __init__(self, model: str = "base.en", language: str = "en", compute_type: str = "int8",
+                 prompt: str = ""):
         self.model_name = model
+        self.prompt = prompt  # words Whisper should expect (names, sales terms); improves accuracy a lot
         self.language = language
         self.compute_type = compute_type
         self._model: Any = None
@@ -42,7 +44,8 @@ class WhisperSTT:
 
     def _transcribe_file(self, path: str) -> str:
         model = self._load()
-        segments, _info = model.transcribe(path, language=self.language, beam_size=1, vad_filter=True)
+        segments, _info = model.transcribe(path, language=self.language, beam_size=5, vad_filter=True,
+                                           initial_prompt=self.prompt or None)
         return " ".join(s.text.strip() for s in segments).strip()
 
     async def transcribe(self, audio: bytes, suffix: str = ".webm") -> str:

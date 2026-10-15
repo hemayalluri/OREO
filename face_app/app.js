@@ -101,7 +101,9 @@ function unlockSpeech() {
 // ---------------------------------------------------------------------------
 
 const rec = { stream: null, recorder: null, chunks: [], ctx: null, timer: null };
-const SILENCE_MS = 1300, NO_SPEECH_MS = 7000, MAX_MS = 20000, LEVEL = 0.02;
+// Speech counts as "loud" relative to the room's own noise, measured in the first half second,
+// so quiet Mac microphones (with noise suppression on) still register.
+const SILENCE_MS = 1800, NO_SPEECH_MS = 8000, MAX_MS = 20000, CALIBRATE_MS = 500, MIN_LEVEL = 0.004;
 
 async function startRecording() {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -136,18 +138,23 @@ function watchLevel() {
   source.connect(analyser);
   const buf = new Float32Array(analyser.fftSize);
   const started = performance.now();
-  let heardSpeech = false, lastLoud = started;
+  let heardSpeech = false, lastLoud = started, noise = 0, samples = 0, level = MIN_LEVEL;
 
   clearInterval(rec.timer);
   rec.timer = setInterval(() => {
     analyser.getFloatTimeDomainData(buf);
     const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
     const now = performance.now();
-    if (rms > LEVEL) { heardSpeech = true; lastLoud = now; }
+    if (now - started < CALIBRATE_MS) {
+      noise += rms; samples += 1;
+      level = Math.max(MIN_LEVEL, (noise / samples) * 2.5);
+      return;
+    }
+    if (rms > level) { heardSpeech = true; lastLoud = now; }
     const done = (heardSpeech && now - lastLoud > SILENCE_MS)
       || (!heardSpeech && now - started > NO_SPEECH_MS)
       || now - started > MAX_MS;
-    if (done) { rec.heardSpeech = heardSpeech; stopRecording(); }
+    if (done) stopRecording();
   }, 100);
 }
 
@@ -157,8 +164,6 @@ function stopRecording() {
 }
 
 async function onRecordingDone() {
-  if (rec.heardSpeech === false) { rec.heardSpeech = undefined; setFace("listening"); return; }
-  rec.heardSpeech = undefined;
   const blob = new Blob(rec.chunks, { type: rec.recorder.mimeType || "audio/webm" });
   const ext = blob.type.includes("mp4") ? ".mp4" : ".webm";
   setFace("thinking", "Working out what you said…");

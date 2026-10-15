@@ -45,7 +45,8 @@ def create_app(settings: Settings | None = None, models: ModelAdapter | None = N
                stt: Any | None = None) -> FastAPI:
     settings = settings or load_settings()
     voice = settings.raw.get("voice", {})
-    stt = stt or WhisperSTT(voice.get("stt_model", "base.en"), voice.get("language", "en"))
+    stt = stt or WhisperSTT(voice.get("stt_model", "base.en"), voice.get("language", "en"),
+                            prompt=voice.get("stt_prompt", ""))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -87,7 +88,8 @@ def create_app(settings: Settings | None = None, models: ModelAdapter | None = N
             raise HTTPException(503, str(exc)) from exc
         except Exception as exc:
             log.exception("Transcription failed")
-            raise HTTPException(500, "I couldn't make out that recording.") from exc
+            # Oreo runs on your own machine, so show the real reason on the page to make fixing it easy.
+            raise HTTPException(500, f"I couldn't make out that recording ({type(exc).__name__}: {exc})"[:300]) from exc
         return {"text": text}
 
     @app.websocket("/ws")
