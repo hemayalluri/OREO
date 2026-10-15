@@ -9,6 +9,7 @@ without touching the router or orchestrator.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import anthropic
@@ -32,7 +33,12 @@ class ModelError(Exception):
 class ModelAdapter:
     def __init__(self, client: Any | None = None):
         # The default client reads ANTHROPIC_API_KEY (or an `ant auth login` profile).
-        self.client = client or anthropic.AsyncAnthropic()
+        # User-level keys (sk-ant-usr-...) also need ANTHROPIC_WORKSPACE_ID.
+        if client is None:
+            workspace_id = os.environ.get("ANTHROPIC_WORKSPACE_ID")
+            headers = {"anthropic-workspace-id": workspace_id} if workspace_id else None
+            client = anthropic.AsyncAnthropic(default_headers=headers)
+        self.client = client
 
     async def create(
         self,

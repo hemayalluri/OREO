@@ -35,7 +35,8 @@ async def main(debug: bool) -> int:
         if not gateway.available:
             print("Warning: no company tools available (is data/sales.db created?).", file=sys.stderr)
         oreo = Orchestrator(settings, ModelAdapter(), gateway)
-        print(f"{BOLD}{name}{RESET}: Hi {settings.oreo.get('boss_name', 'there')}! What would you like to know?")
+        hello = (settings.oreo.get("greetings") or ["Hey boss! What's up?"])[0]
+        print(f"{BOLD}{name}{RESET}: {hello}")
         while True:
             try:
                 question = await asyncio.to_thread(input, "\nYou: ")

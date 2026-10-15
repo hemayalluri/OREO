@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 
 import anthropic
 import httpx2
@@ -240,3 +241,23 @@ def test_conversation_log_written(settings):
     run(ask_all(settings, lambda kw: route_json("action"), ["Email me"]))
     entry = json.loads((settings.log_dir / "conversations.jsonl").read_text().splitlines()[0])
     assert entry["question"] == "Email me" and entry["route"] == "action"
+
+
+def test_live_question_gets_one_web_search_and_no_company_data(settings):
+    def script(kw):
+        if is_router(kw):
+            latest = kw["messages"][-1]["content"].split("Latest message:")[-1]
+            return route_json("company" if "revenue" in latest else "live")
+        if kw.get("tools") and kw["tools"][0].get("type") != "web_search_20250305":
+            return response(text_block("Revenue was 19 million dollars."))
+        result = SimpleNamespace(type="web_search_tool_result", content=[
+            SimpleNamespace(type="web_search_result", url="https://www.weather.gov/okx", title="NWS")])
+        return response(result, text_block("Per the Weather Service, it's 68 and sunny in New York."))
+
+    answers, client = run(ask_all(settings, script, ["What was revenue last quarter?", "Weather in NYC today?"]))
+    live = answers[-1]
+    assert live.route == "live" and live.sources == ["weather.gov"] and "68" in live.text
+    call = client.calls[-1]
+    assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
+    assert "19 million" not in json.dumps(call["messages"])
+    assert "Today's date is" in json.dumps(call["system"])

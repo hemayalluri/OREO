@@ -10,6 +10,8 @@ python-dotenv>=1       # loads .env
 fastapi>=0.115           # web server for the face page
 uvicorn[standard]>=0.30  # runs it (WebSocket support included)
 faster-whisper>=1.1      # local speech-to-text; downloads the Whisper model on first use
+av>=11,<19              # PyAV 19 breaks faster-whisper audio decoding (metadata_errors)
+     # local speech-to-text; downloads the Whisper model on first use
 
 # Development
 pytest>=8
