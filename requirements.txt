@@ -10,6 +10,13 @@ python-dotenv>=1       # loads .env
 fastapi>=0.115           # web server for the face page
 uvicorn[standard]>=0.30  # runs it (WebSocket support included)
 faster-whisper>=1.1      # local speech-to-text; downloads the Whisper model on first use
+av>=11,<19               # PyAV 19 breaks faster-whisper's audio decoding (metadata_errors)
+
+# Step 3: reports and email
+openpyxl>=3.1            # Excel reports
+python-docx>=1.1         # Word reports
+reportlab>=4.2           # PDF reports
+matplotlib>=3.9          # charts inside the Word and PDF reports
 
 # Development
 pytest>=8

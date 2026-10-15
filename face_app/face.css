@@ -93,6 +93,7 @@ html, body {
 #heard { color: var(--muted); font-size: clamp(15px, 2.2vw, 20px); }
 #said { font-size: clamp(18px, 3vw, 28px); line-height: 1.35; }
 #meta { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); }
+#meta a.file { color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 2px 10px; margin-left: 4px; text-decoration: none; }
 
 footer {
   display: flex;

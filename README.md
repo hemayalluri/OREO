@@ -1,10 +1,11 @@
 # Oreo
 
-Oreo is a desk robot that answers sales questions from company data, answers general questions, and (soon) makes and emails reports. This repo is built in steps; each one ends in something runnable.
+Oreo is a desk robot that answers sales questions from company data, answers general questions, looks up live info online, and makes and emails reports. This repo is built in steps; each one ends in something runnable.
 
 - **Step 1:** mock sales database + read-only MCP server (below)
 - **Step 2:** Oreo's brain, a text chat in the terminal ([jump to it](#step-2-oreos-brain-text-chat))
 - **Steps 4–5 (first part):** Oreo's face page and tap-to-talk voice ([jump to it](#steps-45-oreos-face-and-voice))
+- **Step 3:** sales reports (PDF, Word, Excel) and email after a clear "yes" ([jump to it](#step-3-reports-and-email))
 
 # Step 1: mock sales database + read-only MCP server
 
@@ -300,7 +301,37 @@ you don't need to tap, and optionally a Piper voice for a custom Oreo sound.
 stand-in for Whisper) and the WebSocket flow (thinking state, filler line, answer,
 reset). Like the other tests, it needs no API key and no microphone.
 
+# Step 3: reports and email
+
+Ask Oreo for a report by voice or text, and it builds one from the sales tools:
+
+- "Make me last month's sales report." → a PDF (the default)
+- "Europe report for last quarter, as a Word document and an Excel file."
+- "Email me the sales report for this quarter." → builds it, then asks "Should I email it to …? Just say yes to send it."
+- "Email it to me." right after a report → emails that same report.
+
+**How it stays trustworthy and cheap**
+
+- Every number comes straight from the read-only MCP tools (`get_sales_summary`, `compare_periods`,
+  `top_items`, `sales_trend`). The highlights are written by code from those numbers, never by the
+  model, so a report can't contain an invented figure. Building one costs nothing; the only model
+  call is a small Haiku request that reads what you asked for (period, region, formats, recipient).
+- Each report has highlights, a summary table compared with the previous period of the same length,
+  a revenue chart, the top 10 products and a breakdown by region (or by channel for a one-region report).
+  Files are saved in `reports/`, and the face page shows download links under the answer.
+
+**Email safety (enforced in code, `backend/emailer.py` and `backend/actions.py`)**
+
+- Nothing is sent when a draft is made. Only a clear "yes" / "yes, send it" / "go ahead" as the very
+  next message sends it (`phrases.is_confirmation`). "No", "yes, but…", another question, or 3 minutes
+  of silence drop the draft unsent. The yes is checked by code, so it needs no model call.
+- Recipients must be in `email.allowed_domains`; lookalikes such as `example-test-domain.com.evil.io` are refused.
+- `email.mode: outbox` (the default) saves each email as an `.eml` file in `outbox/` instead of sending,
+  so the whole flow can be tested with no mail account. To really send, set `email.mode: smtp` and put
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` (an app password) and `EMAIL_FROM` in `.env`.
+- Set `email.default_recipient` to your address for "email it to me".
+
 ## What's next
 
-The "Hey Oreo" wake word, then step 3: reports (Word, PDF, Excel) from MCP data, and
-email that's sent only after a clear "yes".
+Connecting Oreo to the real sales system instead of the mock database, then face
+verification (step 6) so Oreo knows who it's talking to before sharing company data.

@@ -3,6 +3,7 @@ Router: decides which path a question takes.
 
   company  sales/business questions -> Claude with the read-only MCP tools
   general  everything else -> general model with no tools and no company data
+  live     needs current information from the internet (news, weather, prices, scores) -> general model + web search
   mixed    needs company data plus outside knowledge -> company path + web search
   action   create a report or send an email (handled in step 3)
 
@@ -20,12 +21,13 @@ from .models import ModelAdapter, ModelError, text_of
 
 log = logging.getLogger("oreo.router")
 
-ROUTES = ("company", "general", "mixed", "action")
+ROUTES = ("company", "general", "live", "mixed", "action")
 
 ROUTER_SYSTEM = """You route questions for Oreo, a desk assistant for a sales team.
 Classify the user's latest message:
 - company: about the company's own sales, revenue, orders, products, customers, regions, channels, targets, or data freshness. Follow-ups to a company question ("and last year?", "what about Europe?") are company too.
-- general: general knowledge, small talk, jokes, weather, definitions, maths, anything that needs no company data.
+- general: general knowledge on any topic (science, technology, AI and LLMs, history, how-to, advice), small talk, jokes, definitions, maths, questions about Oreo itself or what it can do, anything that needs no company data.
+- live: needs current, real-world information that changes over time and isn't company data: today's news, weather, stock or crypto prices, sports scores, exchange rates, "latest"/"right now"/"this week" happenings, recent releases or events. Timeless facts and explanations are general, not live.
 - mixed: needs company data AND outside information (e.g. "how do our chair sales compare with the industry trend?").
 - action: asks to create a report or document, or to send or email something.
 Set complexity to "simple" only for a single-number company lookup (one period, one metric); otherwise "complex".

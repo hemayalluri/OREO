@@ -2,7 +2,13 @@
 
 oreo:
   name: Oreo
-  boss_name: Siddartha            # used in greetings until face verification (step 6) knows who's talking
+  boss_name: Siddartha            # who Oreo works for; it calls them "boss"
+  # Oreo picks one of these at random each time, so it doesn't sound like a recording.
+  greetings: ["Hey boss! What's up?", "Hey boss! What can I do for you?", "Hey boss, I'm all ears.",
+              "Hey boss! What do you need?", "Hey boss! What are we digging into?"]
+  goodbyes: ["Okay, bye! Just say Hey Oreo when you need me.", "Talk soon!", "Bye! I'll be right here.",
+             "Anytime. See you!"]
+  naps: ["I'll take a little nap. Say Hey Oreo if you need me.", "Going quiet for now. Just say Hey Oreo."]
   rejection_style: playful        # playful | professional
   session_timeout_seconds: 120    # conversation history resets after this much idle time
   max_face_attempts: 3
@@ -17,6 +23,8 @@ routing:
   general_model: claude-haiku-5-5         # general questions; never sees company data
   default_when_unsure: company            # uncertain questions take the secure path
   share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
+  web_search_live: true                   # live questions (news, weather, prices...) may do one web search: ~1 cent each
+  web_search_max_uses: 1                  # searches allowed per live question
   web_search_for_mixed: false             # web search costs extra per search; turn on if needed (needs Sonnet)
   effort:
     router: low
@@ -38,13 +46,26 @@ mcp:
 voice:
   stt_model: base.en          # local Whisper model: tiny.en (fastest), base.en (good default), small.en (most accurate, slower)
   language: en
-  tts_voice: ""               # a macOS/iPadOS voice name such as "Samantha"; empty = the device's default English voice
-  tts_rate: 1.0
-  tts_pitch: 1.15             # a little higher sounds friendlier
+  # Voices to try in order (first one installed wins). The Premium/Enhanced voices sound far more
+  # natural: download them free in System Settings > Accessibility > Spoken Content > System voice > Manage Voices.
+  tts_voice: "Ava (Premium), Zoe (Premium), Ava (Enhanced), Zoe (Enhanced), Samantha (Enhanced), Samantha"
+  mac_voice: true             # on a Mac, speak with the system voice above (works even when the browser can't see it)
+  tts_rate: 1.05              # slightly brisk = crisper
+  tts_pitch: 1.1              # a touch higher sounds sweeter
+  wake_word: true             # while asleep, listen (locally, free) for "Hey Oreo"; goodbyes like "okay bye" put it to sleep
+  hands_free: true            # after waking, keep listening for the next question (no tap needed)
+  listen_timeout_seconds: 30  # in hands-free mode, go back to sleep after this long with nobody speaking
+
+reports:
+  dir: reports                  # where Excel / Word / PDF reports are saved (relative to this file)
+  default_formats: [pdf]        # used when you don't say which format you want
 
 email:
-  allowed_domains: ["example-test-domain.com"]
-  require_confirmation: true
+  allowed_domains: ["example-test-domain.com"]   # Oreo refuses to email any other domain
+  require_confirmation: true    # always on: an email is only sent after a clear "yes"
+  mode: outbox                  # outbox = save emails to outbox/ instead of sending (safe for testing); smtp = really send
+  outbox_dir: outbox
+  default_recipient: "siddartha@example-test-domain.com"  # your address, used for "email it to me" (must be in allowed_domains)
 
 logging:
   dir: logs                               # audit.jsonl (every tool call) and conversations.jsonl

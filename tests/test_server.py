@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from backend.main import create_app
+from backend.main import FILLERS, create_app
 from backend.models import ModelAdapter
 from backend.speech import SpeechUnavailable
 from conftest import FakeClient, is_router, response, route_json, text_block, tool_use
@@ -16,7 +17,7 @@ class FakeSTT:
     def __init__(self, text="What were our top products last quarter?", error=None):
         self.text, self.error, self.calls = text, error, []
 
-    async def transcribe(self, audio: bytes, suffix: str = ".webm") -> str:
+    async def transcribe(self, audio: bytes, suffix: str = ".webm", hotwords=None) -> str:
         self.calls.append((len(audio), suffix))
         if self.error:
             raise self.error
@@ -36,8 +37,19 @@ def company_script(kw):
     return response(text_block(f"According to the sales database, the top product was the {top}."))
 
 
-def make_client(settings, stt=None, script=company_script):
-    app = create_app(settings, ModelAdapter(FakeClient(script)), stt or FakeSTT())
+class FakeTTS:
+    voice = "Ava (Premium)"
+
+    def __init__(self):
+        self.calls = []
+
+    async def synthesize(self, text: str) -> bytes:
+        self.calls.append(text)
+        return b"RIFF-fake-wav"
+
+
+def make_client(settings, stt=None, script=company_script, tts=None):
+    app = create_app(settings, ModelAdapter(FakeClient(script)), stt or FakeSTT(), tts or FakeTTS())
     return TestClient(app)
 
 
@@ -76,7 +88,7 @@ def test_websocket_sends_thinking_filler_then_answer(settings):
         ws.send_json({"type": "ask", "text": "What were our top products last quarter?"})
         first, second, answer = ws.receive_json(), ws.receive_json(), ws.receive_json()
     assert first == {"type": "state", "state": "thinking", "question": "What were our top products last quarter?"}
-    assert second["route"] == "company" and second["filler"] == "Let me check the sales data."
+    assert second["route"] == "company" and second["filler"] in FILLERS["company"]
     assert answer["type"] == "answer" and "top product was the" in answer["text"]
     assert answer["as_of"] == "2026-10-14" and answer["tools_used"] == ["top_items"]
 
@@ -90,3 +102,25 @@ def test_websocket_general_question_has_no_filler_and_reset_works(settings):
     assert routed["route"] == "general" and routed["filler"] is None
     assert "recharge" in answer["text"]
     assert reset == {"type": "state", "state": "sleeping"}
+
+
+def test_speak_returns_wav_in_the_mac_voice(settings):
+    tts = FakeTTS()
+    with make_client(settings, tts=tts) as client:
+        assert client.get("/api/health").json()["voice"]["server_voice"] == "Ava (Premium)"
+        res = client.post("/api/speak", json={"text": "Hi Siddartha!"})
+        assert client.post("/api/speak", json={"text": "  "}).status_code == 404
+    assert res.status_code == 200 and res.headers["content-type"] == "audio/wav"
+    assert res.content == b"RIFF-fake-wav" and tts.calls == ["Hi Siddartha!"]
+
+
+def test_report_downloads_only_serve_files_in_the_reports_folder(settings, tmp_path):
+    folder = Path(settings.raw["reports"]["dir"])
+    folder.mkdir(parents=True)
+    (folder / "last-month.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "secret.pdf").write_bytes(b"secret")
+    with make_client(settings) as client:
+        ok = client.get("/reports/last-month.pdf")
+        assert ok.status_code == 200 and ok.content == b"%PDF-1.4 fake"
+        for bad in ("../secret.pdf", "..%2Fsecret.pdf", "missing.pdf", "config.yaml"):
+            assert client.get(f"/reports/{bad}").status_code == 404
