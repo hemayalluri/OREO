@@ -1,4 +1,12 @@
-# Oreo — Step 1: mock sales database + read-only MCP server
+# Oreo
+
+Oreo is a desk robot that answers sales questions from company data, answers general questions, and (soon) makes and emails reports. This repo is built in steps; each one ends in something runnable.
+
+- **Step 1:** mock sales database + read-only MCP server (below)
+- **Step 2:** Oreo's brain, a text chat in the terminal ([jump to it](#step-2-oreos-brain-text-chat))
+- **Steps 4–5 (first part):** Oreo's face page and tap-to-talk voice ([jump to it](#steps-45-oreos-face-and-voice))
+
+# Step 1: mock sales database + read-only MCP server
 
 This is the data layer for Oreo. It creates a fake sales database for a fictional
 company, **Lumen Desk Co.** (a B2B seller of desks, chairs, lighting, tech and
@@ -144,9 +152,155 @@ Press Ctrl+C to stop it.
 correct, and look at the server log at `~/Library/Logs/Claude/mcp-server-oreo-sales.log`.
 "Database not found" means step 1 above hasn't been run (or `OREO_SALES_DB` is wrong).
 
+# Step 2: Oreo's brain (text chat)
+
+Ask Oreo questions in the terminal. Each question is routed, answered by the
+right model, and comes back with its source and "as of" date.
+
+```
+backend/
+├── config.py        # loads config.yaml + .env
+├── models.py        # model adapter: the only place that calls an LLM
+├── router.py        # company / general / mixed / action classification
+├── mcp_gateway.py   # MCP client, tool allowlist, read-only check, audit log
+├── prompts.py       # Oreo's personality and per-path rules
+├── orchestrator.py  # routing, tool loop, shared history, idle timeout
+└── chat.py          # terminal chat
+config.yaml          # models, routing, MCP servers, timeouts
+.env.example         # copy to .env and add your API key
+tests/               # runs without an API key (scripted fake model)
+```
+
+**How a question flows**
+
+1. The **router** (Claude Haiku 5.5) labels it `company`, `general`, `mixed` or `action`.
+   If it's unsure, or the router call fails, the question takes the company path,
+   because that's the secure one.
+2. **Company:** Claude gets the six sales tools through the **MCP gateway**. Budget
+   mode uses Haiku 5.5 for everything; with `company_model` set to Sonnet 5.5, only
+   simple one-number lookups stay on Haiku. The gateway only
+   exposes allowlisted tools that declare themselves read-only, and logs every call to
+   `logs/audit.jsonl`.
+3. **Mixed:** the company path, plus web search when `web_search_for_mixed` is on.
+4. **General:** Haiku 5.5 with no tools. It never sees company data: earlier company
+   answers in the history are replaced with `[withheld]`
+   (`share_company_answers_with_general` in `config.yaml`).
+5. **Action** (reports and email) replies that the skill is coming; step 3 builds it.
+
+History is shared across routes so follow-ups ("and last year?") work, and resets after
+2 minutes idle (`session_timeout_seconds`). Errors become short spoken-style messages,
+such as "I can't reach the sales system right now." Every exchange is logged to
+`logs/conversations.jsonl`.
+
+**Cost controls (budget mode is the default):** every route uses Claude Haiku 5.5
+($0.10 / $0.50 per million input/output tokens) at low effort; web search is off;
+each answer is capped at 4,000 tokens and 5 tool rounds per question; the system
+prompt and tool definitions are cached. A typical question costs well under a cent.
+For harder analysis, set `company_model: claude-sonnet-5-5` in `config.yaml`
+(about 20x the price per token). Always set a monthly spend limit in the Claude Console.
+
+**Refusal fallback:** if you switch to Sonnet 5.5, its requests opt into the API's server-side fallback
+(`fallbacks: "default"`), so if a safety check declines a harmless request, another
+model answers instead of Oreo going silent. Haiku has no such fallback; Oreo says
+politely that it can't help.
+
+## Run it
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt          # adds the Anthropic SDK, PyYAML, python-dotenv, pytest
+cp .env.example .env                     # then paste your API key into .env
+python data/create_mock_data.py          # if you haven't yet
+python -m backend.chat                   # add --debug to see routing and tool calls
+```
+
+Get an API key at https://platform.claude.com (Settings → API keys) and set a
+monthly spending limit there before you start.
+
+Things to try:
+
+- "What were our top 3 products last quarter?" → company path, `top_items`
+- "And how about in Europe?" → follow-up stays on the company path
+- "How is this year going compared with last year?" → `compare_periods`
+- "Tell me a fun fact about octopuses." → general path, no tools
+- "Are our lighting sales keeping up with the smart-lamp market?" → mixed (web search only if enabled)
+- "Email me a sales report." → action (coming in step 3)
+- `/reset` clears the conversation, `/quit` exits
+
+Below each answer the chat shows the route, model, tools used and data date.
+
+## Tests
+
+```bash
+python -m pytest
+```
+
+The tests start the real MCP server on a small generated database and replace
+Claude with a scripted fake, so they need no API key and cost nothing. They cover
+routing (including the secure fallback), the tool allowlist and read-only checks,
+the audit log, withholding company answers from the general path, the idle
+timeout, the tool-round cap and friendly error messages.
+
+# Steps 4–5: Oreo's face and voice
+
+Talk to Oreo in a browser: tap its face, ask out loud, and it answers out loud
+while the face changes expression.
+
+```
+backend/main.py     # web server: face page, /api/transcribe, /ws (live state + answers)
+backend/speech.py   # local speech-to-text with faster-whisper
+face_app/           # the face page: index.html, face.css, app.js
+```
+
+**How it works**
+
+1. **Tap the face.** Oreo wakes up, says hi, and starts listening. The eyes pulse while it records.
+2. **Ask your question.** Recording stops by itself after a short pause, or when you tap again.
+3. **Speech to text, on your Mac.** The audio goes to `/api/transcribe`, where
+   **faster-whisper** turns it into text locally. It's free, works offline, and the
+   audio never leaves the Mac.
+4. **Thinking.** The question goes to the brain over a WebSocket. As soon as it's
+   routed, the face shows *Thinking* and, for sales questions, says
+   "Let me check the sales data."
+5. **Answering.** The answer is spoken with the device's built-in voice (free,
+   offline on macOS and iPadOS) and shown as a caption with its source and date.
+6. **Follow-ups.** Tap again to ask a follow-up. After 2 minutes idle, Oreo goes back to sleep.
+
+You can also type questions in the box at the bottom, which is handy when you're in a quiet office.
+
+**Faces:** Sleeping, Listening, Thinking and Speaking (the Authorized face with a moving
+mouth) are in use now. Scanning and Rejected are drawn and wait for face verification (step 6).
+
+## Run it
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt     # adds FastAPI, Uvicorn and faster-whisper
+python -m backend.main              # then open http://localhost:8000 in Chrome or Safari
+```
+
+- The first spoken question downloads the Whisper model (about 150 MB for `base.en`)
+  and then it's cached. Change `voice.stt_model` in `config.yaml` to `tiny.en` for
+  speed or `small.en` for accuracy.
+- Allow microphone access when the browser asks.
+- Pick a voice with `voice.tts_voice` (for example `"Samantha"`). Better voices can be
+  downloaded for free in macOS System Settings → Accessibility → Spoken Content.
+- Each question costs the same as in the text chat: one Haiku routing call plus the
+  answer. Speech costs nothing.
+
+**On the iPad (later, step 8):** browsers only allow the microphone on `localhost` or
+over HTTPS, so the iPad will need an HTTPS address for the Mac. Step 8 sets that up.
+
+**Still to come for voice:** the "Hey Oreo" wake word (openWakeWord, free and local) so
+you don't need to tap, and optionally a Piper voice for a custom Oreo sound.
+
+## Tests
+
+`tests/test_server.py` covers the face page, the transcription endpoint (with a
+stand-in for Whisper) and the WebSocket flow (thinking state, filler line, answer,
+reset). Like the other tests, it needs no API key and no microphone.
+
 ## What's next
 
-Step 2 (Oreo's brain) builds the Python orchestrator that connects to this same
-server through its own MCP client, with the router and the Oreo personality.
-`config.yaml` and `.env.example` from the plan's layout are added in that step,
-when there's something to configure.
+The "Hey Oreo" wake word, then step 3: reports (Word, PDF, Excel) from MCP data, and
+email that's sent only after a clear "yes".

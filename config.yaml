@@ -1,0 +1,54 @@
+# Oreo configuration. Secrets (API keys, email passwords) never go here: put them in .env.
+
+oreo:
+  name: Oreo
+  boss_name: Siddartha            # used in greetings until face verification (step 6) knows who's talking
+  rejection_style: playful        # playful | professional
+  session_timeout_seconds: 120    # conversation history resets after this much idle time
+  max_face_attempts: 3
+  lockout_seconds: 60
+
+routing:
+  router_model: claude-haiku-5-5          # classifies each question
+  # Budget mode: every route uses Haiku 5.5 ($0.10 / $0.50 per million tokens).
+  # For harder company questions, switch company_model to claude-sonnet-5-5 (about 20x the price).
+  company_model: claude-haiku-5-5         # complex company questions, comparisons, mixed questions
+  company_simple_model: claude-haiku-5-5  # single-number company lookups
+  general_model: claude-haiku-5-5         # general questions; never sees company data
+  default_when_unsure: company            # uncertain questions take the secure path
+  share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
+  web_search_for_mixed: false             # web search costs extra per search; turn on if needed (needs Sonnet)
+  effort:
+    router: low
+    company: low
+    company_simple: low
+    general: low
+  max_tool_rounds: 5                      # safety cap on tool calls per question
+  max_answer_tokens: 4000                 # cap on each model response (spoken answers are short)
+
+mcp:
+  servers:
+    - name: mock-sales
+      transport: stdio
+      command: python                     # "python" means: the same Python that runs Oreo
+      args: [mcp_server/sales_server.py]  # relative paths are relative to this file
+      read_only: true                     # only tools that declare themselves read-only are allowed
+      allowed_tools: [data_freshness, list_dimensions, get_sales_summary, compare_periods, top_items, sales_trend]
+
+voice:
+  stt_model: base.en          # local Whisper model: tiny.en (fastest), base.en (good default), small.en (most accurate, slower)
+  language: en
+  tts_voice: ""               # a macOS/iPadOS voice name such as "Samantha"; empty = the device's default English voice
+  tts_rate: 1.0
+  tts_pitch: 1.15             # a little higher sounds friendlier
+
+email:
+  allowed_domains: ["example-test-domain.com"]
+  require_confirmation: true
+
+logging:
+  dir: logs                               # audit.jsonl (every tool call) and conversations.jsonl
+
+users:
+  - name: Siddartha
+    role: boss

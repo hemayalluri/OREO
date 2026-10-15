@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1B2333">
+  <title>Oreo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22%231B2333%22/%3E%3Cellipse cx=%2233%22 cy=%2250%22 rx=%2210%22 ry=%2214%22 fill=%22%235EE6D0%22/%3E%3Cellipse cx=%2267%22 cy=%2250%22 rx=%2210%22 ry=%2214%22 fill=%22%235EE6D0%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/face.css">
+</head>
+<body>
+  <main id="screen" data-face="sleeping">
+    <button id="face" aria-label="Tap to talk to Oreo">
+      <svg viewBox="0 0 400 260" role="img" aria-hidden="true">
+        <!-- Sleeping: closed curved eyes, muted grey -->
+        <g class="expr sleeping">
+          <path d="M95 120 q35 28 70 0" class="line grey"/>
+          <path d="M235 120 q35 28 70 0" class="line grey"/>
+          <text x="318" y="70" class="zzz">z</text><text x="338" y="48" class="zzz small">z</text>
+        </g>
+        <!-- Listening: wide oval eyes with highlights, small round mouth -->
+        <g class="expr listening">
+          <ellipse cx="130" cy="115" rx="34" ry="44" class="eye"/>
+          <ellipse cx="270" cy="115" rx="34" ry="44" class="eye"/>
+          <circle cx="142" cy="98" r="9" class="shine"/><circle cx="282" cy="98" r="9" class="shine"/>
+          <circle cx="200" cy="200" r="10" class="mouth-o"/>
+        </g>
+        <!-- Scanning: orange frame corners and scan line, small eyes (used in step 6) -->
+        <g class="expr scanning">
+          <path d="M60 40 h40 M60 40 v40 M340 40 h-40 M340 40 v40 M60 230 h40 M60 230 v-40 M340 230 h-40 M340 230 v-40" class="line orange"/>
+          <line x1="70" x2="330" y1="60" y2="60" class="scanline"/>
+          <circle cx="150" cy="125" r="16" class="eye"/><circle cx="250" cy="125" r="16" class="eye"/>
+        </g>
+        <!-- Authorized / answering: smiling arc eyes, big smile, blush -->
+        <g class="expr authorized">
+          <path d="M95 125 q35 -40 70 0" class="line mint"/>
+          <path d="M235 125 q35 -40 70 0" class="line mint"/>
+          <ellipse cx="88" cy="168" rx="22" ry="11" class="blush"/>
+          <ellipse cx="312" cy="168" rx="22" ry="11" class="blush"/>
+          <path d="M160 180 q40 38 80 0" class="line mint smile"/>
+          <ellipse cx="200" cy="195" rx="22" ry="12" class="talk"/>
+        </g>
+        <!-- Rejected: slanted brows, flat eyes, frown, red-orange (used in step 6) -->
+        <g class="expr rejected">
+          <path d="M95 80 l70 22 M305 80 l-70 22" class="line red"/>
+          <path d="M100 128 h60 M240 128 h60" class="line red"/>
+          <path d="M165 205 q35 -26 70 0" class="line red"/>
+        </g>
+        <!-- Thinking: eyes looking up, three loading dots -->
+        <g class="expr thinking">
+          <ellipse cx="130" cy="115" rx="30" ry="38" class="eye"/>
+          <ellipse cx="270" cy="115" rx="30" ry="38" class="eye"/>
+          <circle cx="136" cy="90" r="12" class="pupil"/><circle cx="276" cy="90" r="12" class="pupil"/>
+          <circle cx="175" cy="205" r="9" class="dot d1"/>
+          <circle cx="200" cy="205" r="9" class="dot d2"/>
+          <circle cx="225" cy="205" r="9" class="dot d3"/>
+        </g>
+      </svg>
+    </button>
+
+    <section id="caption" aria-live="polite">
+      <p id="heard"></p>
+      <p id="said"></p>
+      <p id="meta"></p>
+    </section>
+
+    <footer>
+      <span id="status">Tap Oreo to wake it up</span>
+      <form id="typed" autocomplete="off">
+        <input id="typed-text" placeholder="…or type a question" aria-label="Type a question">
+      </form>
+    </footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
