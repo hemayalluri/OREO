@@ -253,7 +253,7 @@ def test_live_question_gets_one_web_search_and_no_company_data(settings):
     live = answers[-1]
     assert live.route == "live" and live.sources == ["weather.gov"] and "68" in live.text
     call = client.calls[-1]
-    assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
+    assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}]
     assert "19 million" not in json.dumps(call["messages"])
     assert "Today's date is" in json.dumps(call["system"])
 

@@ -38,7 +38,10 @@ If there's more worth saying, you may end with a short offer like "Want more on 
 
 
 LIVE_RULES = """This question needs current information, so you have a web search tool. Today's date is {today}.
-Search once, then answer from the results in a sentence or two, in your own words, naming the source briefly ("per the BBC...").
+Write search queries that ask for the newest information: include the date or month and words like
+"today", "latest" or "live" (e.g. "India cricket score today {today}"). Check the dates on the results.
+If the first results are old, search again with a sharper query (you have up to {searches} searches).
+Answer in a sentence or two, in your own words, naming the source and how recent it is ("per ESPN, today...").
 Never paste headlines, forecast text or other wording from the results; it sounds odd read aloud.
 If the results don't clearly answer it, or look out of date, say so honestly instead of guessing."""
 
@@ -55,5 +58,6 @@ def general_system(name: str, boss: str) -> str:
     return "\n\n".join([PERSONALITY.format(name=name, boss=boss), GENERAL_RULES, LENGTH_RULE])
 
 
-def live_system(name: str, boss: str, today: str) -> str:
-    return "\n\n".join([PERSONALITY.format(name=name, boss=boss), LIVE_RULES.format(today=today), LENGTH_RULE])
+def live_system(name: str, boss: str, today: str, searches: int = 1) -> str:
+    return "\n\n".join([PERSONALITY.format(name=name, boss=boss),
+                        LIVE_RULES.format(today=today, searches=searches), LENGTH_RULE])

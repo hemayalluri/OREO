@@ -24,7 +24,7 @@ routing:
   default_when_unsure: company            # uncertain questions take the secure path
   share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
   web_search_live: true                   # live questions (news, weather, prices...) may do one web search: ~1 cent each
-  web_search_max_uses: 1                  # searches allowed per live question
+  web_search_max_uses: 3                  # searches allowed per live question (~1 cent each; a second try when results are old)
   web_search_for_mixed: false             # web search costs extra per search; turn on if needed (needs Sonnet)
   effort:
     router: low

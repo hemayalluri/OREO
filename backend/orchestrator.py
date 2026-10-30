@@ -194,7 +194,7 @@ class Orchestrator:
         today = datetime.now().strftime("%A, %B %-d, %Y")
         messages = self._history_messages("general") + [{"role": "user", "content": question}]
         for _ in range(3):  # a long search can pause the turn; resume it a couple of times at most
-            msg = await self.models.create(model=model, system=live_system(self.name, self.boss, today),
+            msg = await self.models.create(model=model, system=live_system(self.name, self.boss, today, tool["max_uses"]),
                                            tools=[tool], messages=messages,
                                            effort=r.get("effort", {}).get("general"),
                                            max_tokens=r.get("max_answer_tokens", 4000))
