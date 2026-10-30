@@ -1,13 +1,13 @@
 """
-Router: decides which path a question takes.
+Router: the coordinator's first step. Decides which sub-agent(s) handle a request.
 
-  company  sales/business questions -> Claude with the read-only MCP tools
-  general  everything else -> general model with no tools and no company data
-  live     needs current information from the internet (news, weather, prices, scores) -> general model + web search
-  mixed    needs company data plus outside knowledge -> company path + web search
-  action   create a report or send an email (handled in step 3)
+  company  sales/business questions             -> company-data agent (read-only MCP tools)
+  general  everything else, from knowledge      -> web agent, no search
+  live     needs current information online     -> web agent with web search
+  mixed    company data plus outside information -> both agents, combined by the coordinator
+  action   create a report or send an email     -> company-data agent (reports, email)
 
-When the router is unsure, or fails, the question takes the company (secure) path.
+When the router is unsure, or fails, the request takes the company (secure) path.
 """
 
 from __future__ import annotations

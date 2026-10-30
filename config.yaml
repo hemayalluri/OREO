@@ -14,18 +14,21 @@ oreo:
   max_face_attempts: 3
   lockout_seconds: 60
 
+# The coordinator (router_model) sends each request to a sub-agent:
+#   company-data agent: the internal sales database (company_model / company_simple_model), reports, email
+#   web agent: the live internet and general knowledge (general_model / live_model); never sees company data
+# Questions that need both go to both agents at once, and the coordinator combines the answers.
 routing:
-  router_model: claude-haiku-5-5          # classifies each question
+  router_model: claude-haiku-5-5          # the coordinator: decides which agent(s) handle each request
   # Budget mode: every route uses Haiku 5.5 ($0.10 / $0.50 per million tokens).
   # For harder company questions, switch company_model to claude-sonnet-5-5 (about 20x the price).
-  company_model: claude-haiku-5-5         # complex company questions, comparisons, mixed questions
+  company_model: claude-haiku-5-5         # company-data agent: complex questions and comparisons
   company_simple_model: claude-haiku-5-5  # single-number company lookups
-  general_model: claude-haiku-5-5         # general questions; never sees company data
+  general_model: claude-haiku-5-5         # web agent (and combining two agents' answers); never sees company data
   default_when_unsure: company            # uncertain questions take the secure path
-  share_company_answers_with_general: false  # if false, the general model sees company answers as "[withheld]"
+  share_company_answers_with_general: false  # if false, the web agent sees earlier company answers as "[withheld]"
   web_search_live: true                   # live questions (news, weather, prices...) may do one web search: ~1 cent each
-  web_search_max_uses: 1                  # searches allowed per live question
-  web_search_for_mixed: false             # web search costs extra per search; turn on if needed (needs Sonnet)
+  web_search_max_uses: 3                  # searches allowed per live question (~1 cent each; a second try when results are old)
   effort:
     router: low
     company: low

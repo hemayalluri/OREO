@@ -124,16 +124,49 @@ def test_tool_errors_are_returned_to_the_model(settings):
     assert "Mars" in answer.text
 
 
-def test_mixed_question_adds_web_search(settings):
-    settings.raw["routing"]["web_search_for_mixed"] = True
+def test_mixed_question_uses_both_agents_and_the_coordinator_combines_them(settings):
     def script(kw):
         if is_router(kw):
             return route_json("mixed")
-        return response(text_block("Our chairs grew faster than the market."))
+        system = json.dumps(kw.get("system", ""))
+        if "Combine their findings" in system:
+            return response(text_block("We sold 2.3 million in chairs; the market grew about 4 percent."))
+        tools = kw.get("tools") or []
+        if any(t.get("type") == "web_search_20250305" for t in tools):
+            return response(text_block("Per IBISWorld, office chair sales grew about 4 percent this year."))
+        last = kw["messages"][-1]
+        if isinstance(last["content"], str):
+            return response(tool_use("top_items", {"dimension": "category", "period": "last_quarter"}),
+                            stop_reason="tool_use")
+        return response(text_block("Chairs brought in about 2.3 million last quarter."))
 
     (answer,), client = run(ask_all(settings, script, ["Are our chair sales beating the industry?"]))
-    assert answer.route == "mixed"
-    assert any(t.get("type") == "web_search_20260209" for t in client.calls[1]["tools"])
+    assert answer.route == "mixed" and answer.agents == ["company", "web"]
+    assert answer.text.startswith("We sold 2.3 million") and "top_items" in answer.tools_used
+    assert "web_search" not in answer.tools_used or answer.sources  # web sources only when it searched
+    company_calls = [c for c in client.calls if any(t.get("name") == "top_items" for t in c.get("tools") or [])]
+    web_calls = [c for c in client.calls if any(t.get("type") == "web_search_20250305" for t in c.get("tools") or [])]
+    assert company_calls and web_calls
+    # The sales tools never go to the web agent, and the web agent never sees company figures.
+    assert all(t.get("name") != "top_items" for c in web_calls for t in c["tools"])
+    assert "2.3 million" not in json.dumps(web_calls[0]["messages"])
+    # Each agent was told to answer only its own part.
+    assert "Answer ONLY the company-data part" in json.dumps(company_calls[0]["system"])
+    assert "Answer ONLY the outside part" in json.dumps(web_calls[0]["system"])
+
+
+def test_each_route_goes_to_the_right_agent(settings):
+    def script(kw):
+        if is_router(kw):
+            latest = kw["messages"][-1]["content"].split("Latest message:")[-1]
+            return route_json({"revenue": "company", "joke": "general", "weather": "live"}[
+                next(k for k in ("revenue", "joke", "weather") if k in latest.lower())])
+        if kw.get("tools") and kw["tools"][0].get("type") != "web_search_20250305":
+            return response(text_block("Revenue was 19 million dollars."))
+        return response(text_block("Sure thing."))
+
+    answers, _ = run(ask_all(settings, script, ["What was revenue?", "Tell me a joke", "Weather today?"]))
+    assert [a.agents for a in answers] == [["company"], ["web"], ["web"]]
 
 
 def test_tool_round_cap(settings):
@@ -253,7 +286,7 @@ def test_live_question_gets_one_web_search_and_no_company_data(settings):
     live = answers[-1]
     assert live.route == "live" and live.sources == ["weather.gov"] and "68" in live.text
     call = client.calls[-1]
-    assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
+    assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}]
     assert "19 million" not in json.dumps(call["messages"])
     assert "Today's date is" in json.dumps(call["system"])
 
