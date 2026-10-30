@@ -27,7 +27,7 @@ ROUTER_SYSTEM = """You route questions for Oreo, a desk assistant for a sales te
 Classify the user's latest message:
 - company: about the company's own sales, revenue, orders, products, customers, regions, channels, targets, or data freshness. Follow-ups to a company question ("and last year?", "what about Europe?") are company too.
 - general: general knowledge on any topic (science, technology, AI and LLMs, history, how-to, advice), small talk, jokes, definitions, maths, questions about Oreo itself or what it can do, anything that needs no company data.
-- live: needs current, real-world information that changes over time and isn't company data: today's news, weather, stock or crypto prices, sports scores, exchange rates, "latest"/"right now"/"this week" happenings, recent releases or events. Timeless facts and explanations are general, not live.
+- live: needs current, real-world information that changes over time and isn't company data: today's news, weather, stock or crypto prices, sports scores, exchange rates, "latest"/"right now"/"this week" happenings, recent releases or events. Also live: any request to look something up online or search the web, including a follow-up like "look it up" or "check online". Timeless facts and explanations are general, not live.
 - mixed: needs company data AND outside information (e.g. "how do our chair sales compare with the industry trend?").
 - action: asks to create a report or document, or to send or email something.
 Set complexity to "simple" only for a single-number company lookup (one period, one metric); otherwise "complex".

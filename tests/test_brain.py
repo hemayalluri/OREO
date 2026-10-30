@@ -256,3 +256,10 @@ def test_live_question_gets_one_web_search_and_no_company_data(settings):
     assert call["tools"] == [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
     assert "19 million" not in json.dumps(call["messages"])
     assert "Today's date is" in json.dumps(call["system"])
+
+
+def test_prompts_never_claim_no_internet():
+    from backend.prompts import company_system, general_system, live_system
+    for text in (general_system("Oreo", "boss"), company_system("Oreo", "boss"), live_system("Oreo", "boss", "2026-10-30")):
+        assert "don't have live internet" not in text
+        assert "look things up online" in text
