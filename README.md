@@ -8,6 +8,26 @@ Oreo is a desk robot that answers sales questions from company data, answers gen
 - **Step 3:** sales reports (PDF, Word, Excel) and email after a clear "yes" ([jump to it](#step-3-reports-and-email))
 - **Step 8:** Oreo on the iPad, as a full-screen home-screen app ([jump to it](#step-8-oreo-on-the-ipad))
 
+## How Oreo's brain is organised
+
+A **coordinator** on top takes each request and hands it to one of two **sub-agents**:
+
+```
+                           +--> Company data agent   internal sales database (read-only MCP tools),
+  you --> Coordinator -----+                         sales reports and email
+          (router)         |
+                           +--> Web agent            live internet (web search) + general knowledge;
+                                                     never sees company data
+```
+
+- Sales questions and reports go to the company data agent (`backend/agents/company.py`).
+- General questions and anything current (news, weather, prices, scores) go to the web agent
+  (`backend/agents/web.py`). It searches only when the question needs fresh information.
+- Questions that need both ("are our chair sales beating the industry?") go to both agents at
+  once. Each answers only its own part, and the coordinator (`backend/orchestrator.py`) combines
+  the two into one answer, keeping company figures and outside facts apart.
+- If the coordinator is unsure, it takes the secure path (the company data agent).
+
 # Step 1: mock sales database + read-only MCP server
 
 This is the data layer for Oreo. It creates a fake sales database for a fictional

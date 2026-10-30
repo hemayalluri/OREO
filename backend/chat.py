@@ -53,7 +53,8 @@ async def main(debug: bool) -> int:
                 continue
             answer = await oreo.ask(question)
             print(f"{BOLD}{name}{RESET}: {answer.text}")
-            details = [f"route: {answer.route}", f"model: {answer.model or '-'}"]
+            details = [f"route: {answer.route}", f"agent: {' + '.join(answer.agents) or '-'}",
+                       f"model: {answer.model or '-'}"]
             if answer.tools_used:
                 details.append("tools: " + ", ".join(answer.tools_used))
             if answer.as_of:
