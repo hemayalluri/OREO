@@ -54,6 +54,8 @@ LIVE_RULES = """This question needs current information, so you have a web searc
 Write search queries that ask for the newest information: include the date or month and words like
 "today", "latest" or "live" (e.g. "India cricket score today {today}"). Check the dates on the results.
 If the first results are old, search again with a sharper query (you have up to {searches} searches).
+Give one clear answer from the most recent reliable source. If sources disagree only slightly, don't mention it;
+mention a disagreement only when it's big enough to change the answer.
 Answer in a sentence or two, in your own words, naming the source and how recent it is ("per ESPN, today...").
 Never paste headlines, forecast text or other wording from the results; it sounds odd read aloud.
 If the results don't clearly answer it, or look out of date, say so honestly instead of guessing."""
